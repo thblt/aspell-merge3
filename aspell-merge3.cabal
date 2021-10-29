@@ -1,0 +1,30 @@
+cabal-version:      2.4
+name:               aspell-merge3
+Version:            0.1.0.0
+
+-- A short (one-line) description of the package.
+synopsis: Automatic three-way merge for aspell personal dictionaries.
+
+description: A simple merger for aspell personal dicts.  Simply call
+             with three file names as arguments, the common ancestor followed the
+             two variants to merge.
+
+-- The license under which the package is released.
+license:            GPL-3.0-or-later
+author:             Thibault Polge
+maintainer:         thibault@thb.lt
+
+executable aspell-merge3
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.14.3.0,
+                      bytestring >= 0.10.12.0,
+                      containers >= 0.6.5.1,
+                      optparse-applicative >= 0.16.1
+    hs-source-dirs:   app
+    default-language: Haskell2010
