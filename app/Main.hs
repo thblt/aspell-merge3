@@ -1,5 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+Module      : Main
+Description : Automatic three-way merge for ispell personal dictionaries.
+Copyright   : © 2021 Thibault Polge
+License     : GPL-3
+Maintainer  : thibault@thb.lt
+Stability   : experimental
+-}
+
 -- A few notes on implementation, based on this:
 -- http://aspell.net/man-html/Format-of-the-Personal-and-Replacement-Dictionaries.html
 --
@@ -13,14 +22,6 @@
 --
 -- 3. My own custom fr dict doesn't parse as utf-8, hence the two
 -- previous points.
-
--- |
--- Module      : Main
--- Description : Automatic three-way merge for ispell personal dictionaries.
--- Copyright   : © 2021 Thibault Polge
--- License     : GPL-3
--- Maintainer  : thibault@thb.lt
--- Stability   : experimental
 
 module Main where
 
