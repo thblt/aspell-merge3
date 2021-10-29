@@ -3,13 +3,13 @@
 -- A few notes on implementation, based on this:
 -- http://aspell.net/man-html/Format-of-the-Personal-and-Replacement-Dictionaries.html
 --
--- 1. We don't seem to need to worry about encodings, because aspell
--- only uses 8-bit encoding.  As soon as \n == 0x0A, we should be
--- good.  Thus, we *don't* worry about encoding, and use ByteString.
+-- 1. We don't need to worry about encodings, because aspell only uses
+-- 8-bit encodings.  As long as \n == 0x0A, we should be good.  Thus,
+-- we *don't* worry about encoding, and use raw ByteString's.
 --
 -- 2. The output doesn't need to be sorted.  I've done a quick test to
 -- confirm this, and it seems to be true (good thing, since sorting
--- means handling encodings)
+-- means dealing with encodings)
 --
 -- 3. My own custom fr dict doesn't parse as utf-8, hence the two
 -- previous points.
@@ -21,6 +21,7 @@
 -- License     : GPL-3
 -- Maintainer  : thibault@thb.lt
 -- Stability   : experimental
+
 module Main where
 
 import Control.Exception (try)
@@ -36,7 +37,6 @@ import System.Environment (getArgs, getProgName)
 import System.Exit
 import System.IO (IOMode (..), hPutStrLn, openFile, putStrLn, stderr, stdout, hClose)
 import Prelude hiding (hPutStrLn, putStrLn, readFile)
-
 
 -- * Types
 
@@ -98,18 +98,13 @@ check o a b = do
   checkEqual "locales don't match" (hLocale . dHeader) o a b
   checkEqual "encodings don't match" (hEncoding . dHeader) o a b
 
+-- * Readers and parsers
+
 readDict :: [ByteString] -> Dict ByteString
 readDict (x : xs) = Dict (parseHeader x) (fromList xs')
   where
     xs' = filter (mempty /=) xs
 readDict [] = error "Empty file."
-
-printDict :: Dict ByteString -> ByteString
-printDict (Dict h l) =
-  let lines = printHeader h : toList l
-   in BS.intercalate "\n" lines
-
--- * Readers and parsers
 
 readDictFile :: FilePath -> IO (Dict ByteString)
 readDictFile f = do
@@ -132,6 +127,13 @@ handleResult f (Right dict) =
   do
     BS8.hPutStrLn f (printDict dict)
     hClose f
+
+-- * writer
+
+printDict :: Dict ByteString -> ByteString
+printDict (Dict h l) =
+  let lines = printHeader h : toList l
+   in BS.intercalate "\n" lines
 
 -- * User interface
 
