@@ -1,1 +1,57 @@
 #+TITLE: Three-way merge for aspell custom dictionaries
+
+This is a very simple merge program for aspell custom dictionaries
+(=.pws= files).  It is meant for people who sync their aspell dicts
+over multiple computers using with a vcs or some cloud service.
+Regular merge programs are easily confused by aspell files, who are
+just an unordered list with a standard header.
+
+*Compilation* requires only cabal (usually packaged as =cabal-install=
+or =haskell-cabal=) and is as simple as:
+
+#+begin_example
+$ git clone https://github.com/thblt/aspell-merge3
+$ cd aspell-merge3
+$ cabal build
+#+end_example
+
+*Usage* is just as simple.  Pass three paths, starting with the common
+ ancestor, and =aspell-merge3= will produce a new dictionary file,
+ either to =sdtout= (the default) or to a location passed to the
+ `--output`,`-o`arg.
+
+#+begin_example
+$ aspell-merge3 original modifiedA modifiedB --output combined
+#+end_example
+
+The *algorithm* is /very/ basic. We have three sets of words, one from
+the ancestor (O), and two from variants we need to merge (A and B).  A
+word is included in the output if it matches at least one of these
+conditions:
+
+ 1. It is present in both A and B.
+ 2. It is present in *either* A or B, and not in O.
+
+Rule 1 is the obvious case where there's no conflict; rule 2
+corresponds to a word having been added to one version.  The condition
+in rule 2 that the word is absent from O is to avoid restoring
+deletion: a word that's in O, but not in both A and B, has been
+deleted on one side and that deletion must be propagated to the final
+result.
+
+* Usage with git
+
+In your global or user git config (often =~/.config/git/config=), add
+the following lines:
+
+#+begin_src ini
+[merge "aspell-merge3"]
+  name = A merge driver for aspell custom dictionaries.
+  driver = aspell-merge3 %O %A %B --output %A
+#+end_src ini
+
+then, in your repo's =.gitattributes= (creating it if needed)
+
+#+begin_src ini
+*.pws merge=aspell-merge3
+#+end_src ini
