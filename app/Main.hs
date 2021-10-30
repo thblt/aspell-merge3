@@ -30,15 +30,13 @@ import Control.Monad (when)
 import Data.ByteString (ByteString (..))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import Data.Maybe (fromJust, isNothing)
 import Data.Set (Set (..), difference, fromList, intersection, toList, union, (\\))
-import GHC.IO.Handle.Types (Handle)
-import Options.Applicative (Parser, argument, execParser, fullDesc, help, helper, info, long, progDesc, short, strOption, (<**>), metavar, str, optional)
-import System.Environment (getArgs, getProgName)
-import System.Exit
-import System.IO (IOMode (..), hPutStrLn, openFile, putStrLn, stderr, stdout, hClose)
-import Prelude hiding (hPutStrLn, putStrLn, readFile)
 import Data.String (fromString)
+import Options.Applicative (Parser, argument, execParser, fullDesc, help, helper, info, long, metavar, optional, progDesc, short, str, strOption, (<**>))
+import System.Environment (getArgs, getProgName)
+import System.Exit (ExitCode (..), exitWith)
+import System.IO (Handle, IOMode (..), hClose, hPutStrLn, openFile, putStrLn, stderr, stdout)
+import Prelude hiding (hPutStrLn, putStrLn, readFile)
 
 -- * Types
 
@@ -48,6 +46,7 @@ data Invocation = Invocation
     invocB :: FilePath,
     invocOut :: Maybe FilePath
   }
+  deriving (Show)
 
 data Header = Header
   { hVersion :: ByteString,
@@ -123,13 +122,14 @@ parseHeader s =
 -- output it anyways (maybe aspell uses it to allocate memory, or
 -- something)
 printHeader :: Header -> Int -> ByteString
-printHeader h c = hVersion h
-                  <> " "
-                  <> hLocale h
-                  <> " "
-                  <> (fromString . show $ c)
-                  <> " "
-                  <> hEncoding h
+printHeader h c =
+  hVersion h
+    <> " "
+    <> hLocale h
+    <> " "
+    <> (fromString . show $ c)
+    <> " "
+    <> hEncoding h
 
 handleResult :: Handle -> Either String (Dict ByteString) -> IO ()
 handleResult _ (Left err) = do
@@ -150,57 +150,48 @@ printDict (Dict h l) =
 -- * User interface
 
 argParser :: Parser Invocation
-argParser =
-  Invocation
-    <$> argument
-      str
-      ( metavar "ANCESTOR"
-          <> help "Path to a common ancestor to both versions."
-      )
-      <*> argument
-        str
-        ( metavar "LEFT"
-            <> help "Path to local revision."
-        )
-      <*> argument
-        str
-        ( metavar "THEIRS"
-            <> help "Path to the other revision."
-        )
-      <*> ( optional $
-              strOption $
-                long "output"
-                  <> short 'o'
-                  <> help "Output (default stdout)")
+argParser = Invocation
+            <$> argument str
+            (metavar "ANCESTOR"
+             <> help "Path to a common ancestor to both revision.")
+            <*> argument str
+            (metavar "REVA"
+             <> help "Path to a first revision.")
+            <*> argument str
+            (metavar "REVB"
+             <> help "Path to a second revision.")
+            <*> (optional $ strOption $
+                 long "output"
+                 <> short 'o'
+                 <> help "Output file (default stdout)")
 
 main = main' =<< execParser opts
-  where
-    opts =
-      info
-        (argParser <**> helper)
-        ( fullDesc
-            <> progDesc "Automatic three-way merge for aspell custom dictionaries."
-        )
+  where opts = info
+               (argParser <**> helper)
+               (fullDesc
+                 <> progDesc "Automatic three-way merge for aspell custom dictionaries.")
 
 main' :: Invocation -> IO ()
 main' i = do
   o <- readDictFile (invocO i)
   a <- readDictFile (invocA i)
   b <- readDictFile (invocB i)
-  outfd <-
-    if isNothing (invocOut i)
-      then return stdout
-      else openFile (fromJust $ invocOut i) WriteMode
-
+  outfd <- fromMaybeMap (return stdout) (\f -> openFile f WriteMode) (invocOut i)
   handleResult outfd (merge o a b)
 
 -- * Utilities
 
+-- | Return the nth element of a list, or mempty.
 nthOrMempty :: (Monoid a) => [a] -> Int -> a
 nthOrMempty xs n
   | length xs > n = xs !! n
   | otherwise = mempty
 
--- | Symmetric difference
+-- | Symmetric difference.
 symdiff :: (Ord a) => Set a -> Set a -> Set a
 symdiff a b = (a `union` b) \\ (a `intersection` b)
+
+-- | Like fromMaybe, but map f over the Just.
+fromMaybeMap :: b -> (a -> b) -> Maybe a -> b
+fromMaybeMap _ f (Just x) = f x
+fromMaybeMap d _ Nothing = d
