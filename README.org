@@ -1,14 +1,21 @@
-#+TITLE: Three-way merge for aspell custom dictionaries
+#+TITLE: Three-way merge for aspell personal dictionaries
 
-This is a very simple merge program for aspell custom dictionaries
-(=.pws= files).  It is meant for people who sync their aspell dicts
-over multiple computers using with a vcs or some cloud service.
-Regular merge programs are easily confused by aspell files, who are
-just an unordered list with a standard header.
+This is a very simple, non-interactive merge program for aspell
+personal dictionaries (=.pws= files).  It is meant for people who sync
+their personal aspell dictionaries over multiple computers using a vcs
+(eg, git) or some cloud service.  Regular merge programs are easily
+confused by aspell files, who are just an unordered list with an
+header on the first line (they get especially confused by that header,
+since it contains the number of words in the file, so it changes when
+adding/removing words).
+
+=aspell-merge3= automagically merges those files, taking deletions
+into account, and works well with git (see [[#git-integration][the section on git
+integration]], below)
 
 * Building and installation
 
-Compilation requires only `cabal` (usually packaged as =cabal-install=
+Compilation requires only =cabal= (usually packaged as =cabal-install=
 or =haskell-cabal=) and is as simple as:
 
 #+begin_example
@@ -31,6 +38,30 @@ $ aspell-merge3 original modifiedA modifiedB --output combined
 The program will terminate without output and with a non-zero exit
 code if headers in the three files differ in file format version,
 locale or encoding.
+
+(If you need to combine two files without a common ancestor, simply
+pass one of these files as the ancestor, eg =aspell-merge3 A A B
+--output O=)
+
+* git integration
+:PROPERTIES:
+:CUSTOM_ID: git-integration
+:END:
+
+In your global or user git config (often =~/.config/git/config=), add
+the following lines:
+
+#+begin_src ini
+[merge "aspell-merge3"]
+  name = A merge driver for aspell personal dictionaries.
+  driver = aspell-merge3 %O %A %B --output %A
+#+end_src ini
+
+then, in your repo's =.gitattributes= (creating it if needed)
+
+#+begin_src ini
+*.pws merge=aspell-merge3
+#+end_src ini
 
 * Algorithm
 
@@ -58,20 +89,3 @@ In other words, the result of the merge is:
 
 (Δ is symmetric difference. AΔB == A∪B\A∩B)
 #+end_example
-
-* Usage with git
-
-In your global or user git config (often =~/.config/git/config=), add
-the following lines:
-
-#+begin_src ini
-[merge "aspell-merge3"]
-  name = A merge driver for aspell custom dictionaries.
-  driver = aspell-merge3 %O %A %B --output %A
-#+end_src ini
-
-then, in your repo's =.gitattributes= (creating it if needed)
-
-#+begin_src ini
-*.pws merge=aspell-merge3
-#+end_src ini
