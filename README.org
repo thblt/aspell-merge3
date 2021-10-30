@@ -18,7 +18,7 @@ $ cabal build
 *Usage* is just as simple.  Pass three paths, starting with the common
  ancestor, and =aspell-merge3= will produce a new dictionary file,
  either to =sdtout= (the default) or to a location passed to the
- `--output`,`-o`arg.
+ =--output=, =-o= arg.
 
 #+begin_example
 $ aspell-merge3 original modifiedA modifiedB --output combined
