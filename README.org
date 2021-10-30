@@ -28,6 +28,10 @@ arg.
 $ aspell-merge3 original modifiedA modifiedB --output combined
 #+end_example
 
+The program will terminate without output and with a non-zero exit
+code if headers in the three files differ in file format version,
+locale or encoding.
+
 * Algorithm
 
 Nothing fancy here. Given three sets of words, one from the ancestor
