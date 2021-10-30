@@ -38,6 +38,7 @@ import System.Environment (getArgs, getProgName)
 import System.Exit
 import System.IO (IOMode (..), hPutStrLn, openFile, putStrLn, stderr, stdout, hClose)
 import Prelude hiding (hPutStrLn, putStrLn, readFile)
+import Data.String (fromString)
 
 -- * Types
 
@@ -117,8 +118,18 @@ parseHeader s =
   let parts = BS.split 0x20 s
    in Header (head parts) (parts !! 1) (parts `nthOrMempty` 3)
 
-printHeader :: Header -> ByteString
-printHeader h = hVersion h <> " " <> hLocale h <> " 0 " <> hEncoding h
+-- | print an header with a given number of words.  Notice that the
+-- number of words isn't required (see the doc linked above), but we
+-- output it anyways (maybe aspell uses it to allocate memory, or
+-- something)
+printHeader :: Header -> Int -> ByteString
+printHeader h c = hVersion h
+                  <> " "
+                  <> hLocale h
+                  <> " "
+                  <> (fromString . show $ c)
+                  <> " "
+                  <> hEncoding h
 
 handleResult :: Handle -> Either String (Dict ByteString) -> IO ()
 handleResult _ (Left err) = do
@@ -133,7 +144,7 @@ handleResult f (Right dict) =
 
 printDict :: Dict ByteString -> ByteString
 printDict (Dict h l) =
-  let lines = printHeader h : toList l
+  let lines = printHeader h (length l) : toList l
    in BS.intercalate "\n" lines
 
 -- * User interface
