@@ -25,40 +25,44 @@ Stability   : experimental
 
 module Main where
 
-import Control.Exception (try)
-import Control.Monad (when)
-import Data.ByteString (ByteString (..))
-import qualified Data.ByteString as BS
+import           Control.Exception     (try)
+import           Control.Monad         (when)
+import           Data.ByteString       (ByteString (..))
+import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
-import Data.Set (Set (..), difference, fromList, intersection, toList, union, (\\))
-import Data.String (fromString)
-import Options.Applicative (Parser, argument, execParser, fullDesc, help, helper, info, long, metavar, optional, progDesc, short, str, strOption, (<**>))
-import System.Environment (getArgs, getProgName)
-import System.Exit (ExitCode (..), exitWith)
-import System.IO (Handle, IOMode (..), hClose, hPutStrLn, openFile, putStrLn, stderr, stdout)
-import Prelude hiding (hPutStrLn, putStrLn, readFile)
+import           Data.Set              (Set (..), difference, fromList,
+                                        intersection, toList, union, (\\))
+import           Data.String           (fromString)
+import           Data.Version          (showVersion)
+import           Options.Applicative   (Parser, argument, execParser, fullDesc,
+                                        help, helper, info, long, metavar,
+                                        optional, progDesc, short, str,
+                                        strOption, (<**>))
+import           Paths_aspell_merge3   (version)
+import           Prelude               hiding (hPutStrLn, putStrLn, readFile)
+import           System.Environment    (getArgs, getProgName)
+import           System.Exit           (ExitCode (..), exitWith)
+import           System.IO             (Handle, IOMode (..), hClose, hPutStrLn,
+                                        openFile, putStrLn, stderr, stdout)
 
 -- * Types
 
 data Invocation = Invocation
-  { invocO :: FilePath,
-    invocA :: FilePath,
-    invocB :: FilePath,
-    invocOut :: Maybe FilePath
-  }
+  { invocO   :: FilePath
+  , invocA   :: FilePath
+  , invocB   :: FilePath
+  , invocOut :: Maybe FilePath }
   deriving (Show)
 
 data Header = Header
-  { hVersion :: ByteString,
-    hLocale :: ByteString,
-    hEncoding :: ByteString
-  }
+  { hVersion  :: ByteString
+  , hLocale   :: ByteString
+  , hEncoding :: ByteString }
   deriving (Show)
 
 data Dict a = Dict
-  { dHeader :: Header,
-    dElems :: Set a
-  }
+  { dHeader :: Header
+  , dElems  :: Set a }
   deriving (Show)
 
 -- * Main functions
@@ -155,10 +159,10 @@ argParser = Invocation
             (metavar "ANCESTOR"
              <> help "Path to a common ancestor to both revision.")
             <*> argument str
-            (metavar "REVA"
+            (metavar "A"
              <> help "Path to a first revision.")
             <*> argument str
-            (metavar "REVB"
+            (metavar "B"
              <> help "Path to a second revision.")
             <*> (optional $ strOption $
                  long "output"
@@ -169,7 +173,8 @@ main = main' =<< execParser opts
   where opts = info
                (argParser <**> helper)
                (fullDesc
-                 <> progDesc "Automatic three-way merge for aspell custom dictionaries.")
+                 <> (progDesc $  "Automatic three-way merge for aspell custom dictionaries."
+                 ++ " (v. " ++ showVersion version ++ ")"))
 
 main' :: Invocation -> IO ()
 main' i = do
@@ -194,4 +199,4 @@ symdiff a b = (a `union` b) \\ (a `intersection` b)
 -- | Like fromMaybe, but map f over the Just.
 fromMaybeMap :: b -> (a -> b) -> Maybe a -> b
 fromMaybeMap _ f (Just x) = f x
-fromMaybeMap d _ Nothing = d
+fromMaybeMap d _ Nothing  = d
