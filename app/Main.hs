@@ -12,16 +12,17 @@ Stability   : experimental
 -- A few notes on implementation, based on this:
 -- http://aspell.net/man-html/Format-of-the-Personal-and-Replacement-Dictionaries.html
 --
--- 1. We don't need to worry about encodings, because aspell only uses
--- 8-bit encodings.  As long as \n == 0x0A, we should be good.  Thus,
--- we *don't* worry about encoding, and use raw ByteString's.
+-- 1. We shouldn't need to worry about encodings, because aspell only
+--    uses 8-bit representations.  As long as \n == 0x0A, we should be
+--    good.  Thus, we *don't* worry about encoding, and use raw
+--    ByteString's.
 --
 -- 2. The output doesn't need to be sorted.  I've done a quick test to
--- confirm this, and it seems to be true (good thing, since sorting
--- means dealing with encodings)
+--    confirm this, and it seems to be true (that's a good thing,
+--    since sorting means dealing with encodings)
 --
 -- 3. My own custom fr dict doesn't parse as utf-8, hence the two
--- previous points.
+--    previous points.
 
 module Main where
 
@@ -47,6 +48,7 @@ import           System.IO             (Handle, IOMode (..), hClose, hPutStrLn,
 
 -- * Types
 
+-- | The type of command-line arguments.
 data Invocation = Invocation
   { invocO   :: FilePath
   , invocA   :: FilePath
@@ -54,12 +56,17 @@ data Invocation = Invocation
   , invocOut :: Maybe FilePath }
   deriving (Show)
 
+-- | The three components of a dict header: a version signature, the
+-- dict's locale and an optional encoding.  There's a fourth
+-- components, the dict's length, which we can safely ignore.
 data Header = Header
   { hVersion  :: ByteString
   , hLocale   :: ByteString
   , hEncoding :: ByteString }
   deriving (Show)
 
+-- | A parsed dictionary: an header, and a set of words.  Generic over
+-- the type for words, because we can.  But it's going to be ByteString.
 data Dict a = Dict
   { dHeader :: Header
   , dElems  :: Set a }
@@ -69,35 +76,43 @@ data Dict a = Dict
 
 -- ** Merge
 
--- | Merge sorted lists from a common ancestor.  The resulting list is
--- made of the following elements:
---  - Those present in both a and b (their intersection)
---  - Elements absent from o, but present in a xor in b.
---
--- (Elements present in o, but absent from a or b are assumed to
--- have been deleted)
-mergeSets :: (Ord a) => Set a -> Set a -> Set a -> Set a
-mergeSets o a b =
-  let rule1 = intersection a b
-      rule2 = (a `symdiff` b) \\ o
-   in rule1 `union` rule2
-
+-- | Merge three dictionaries.  This will return either a complaint or
+-- a new Dict.
 merge :: (Ord a) => Dict a -> Dict a -> Dict a -> Either String (Dict a)
 merge o a b =
   do
     check o a b
     return $ Dict (dHeader b) (mergeSets (dElems o) (dElems a) (dElems b))
 
+-- | Merge sorted lists from a common ancestor.  The resulting list is
+-- made of the following elements:
+--
+--  - Those present in both a and b (their intersection)
+--  - Elements absent from o, but present in a xor in b.
+--
+-- (The reasoning is that elements present in o, but absent from a or
+-- b have been deleted)
+mergeSets :: (Ord a) => Set a -> Set a -> Set a -> Set a
+mergeSets o a b =
+  let rule1 = intersection a b
+      rule2 = (a `symdiff` b) \\ o
+   in rule1 `union` rule2
+
 -- ** Safety checks
 
 type Check a = Dict a -> Dict a -> Dict a -> Either String ()
 
+-- | Check that a property is the same on both dicts, or complain.
 checkEqual :: (Eq b) => String -> (Dict a -> b) -> Check a
 checkEqual err f o a b
   | f o == f a && f a == f b = Right ()
   | otherwise = Left err
 
+-- | Run all basic checks.  Fundametally, we make sure that all
+-- headers are the same re signature, locale and encoding.
 check :: Dict a -> Dict a -> Dict a -> Either String ()
+-- @TODO We could probably be less conservative by comparing only a
+-- and b, but not o
 check o a b = do
   checkEqual "aspell versions don't match" (hVersion . dHeader) o a b
   checkEqual "locales don't match" (hLocale . dHeader) o a b
@@ -105,23 +120,46 @@ check o a b = do
 
 -- * Readers and parsers
 
+-- | Read a dictionary from a list of lines. Crash on empty input,
+-- because yolo.
 readDict :: [ByteString] -> Dict ByteString
 readDict (x : xs) = Dict (parseHeader x) (fromList xs')
   where
     xs' = filter (mempty /=) xs
 readDict [] = error "Empty file."
 
+-- | Read a dictonary from a file.
 readDictFile :: FilePath -> IO (Dict ByteString)
 readDictFile f = do
   raw <- BS.readFile f
   return $ readDict (BS.split 0x0A raw)
 
+-- | “Parse” the header of a dictionary into an Header object.
 parseHeader :: ByteString -> Header
 parseHeader s =
   let parts = BS.split 0x20 s
    in Header (head parts) (parts !! 1) (parts `nthOrMempty` 3)
 
--- | print an header with a given number of words.  Notice that the
+-- | Do something with a merge Result: write it to a file handle, or
+-- print the error and exit.
+handleResult :: Handle -> Either String (Dict ByteString) -> IO ()
+handleResult _ (Left err) = do
+  hPutStrLn stderr ("Error: " <> err <> ".  Refusing to proceed.")
+  exitWith $ ExitFailure 2
+handleResult f (Right dict) =
+  do
+    BS8.hPutStrLn f (printDict dict)
+    hClose f
+
+-- * writer
+
+-- | Render a dictionary as a ByteString.
+printDict :: Dict ByteString -> ByteString
+printDict (Dict h l) =
+  let lines = printHeader h (length l) : toList l
+   in BS.intercalate "\n" lines
+
+-- | Print an header with a given number of words.  Notice that the
 -- number of words isn't required (see the doc linked above), but we
 -- output it anyways (maybe aspell uses it to allocate memory, or
 -- something)
@@ -134,22 +172,6 @@ printHeader h c =
     <> (fromString . show $ c)
     <> " "
     <> hEncoding h
-
-handleResult :: Handle -> Either String (Dict ByteString) -> IO ()
-handleResult _ (Left err) = do
-  hPutStrLn stderr ("Error: " <> err <> ".  Refusing to proceed.")
-  exitWith $ ExitFailure 2
-handleResult f (Right dict) =
-  do
-    BS8.hPutStrLn f (printDict dict)
-    hClose f
-
--- * writer
-
-printDict :: Dict ByteString -> ByteString
-printDict (Dict h l) =
-  let lines = printHeader h (length l) : toList l
-   in BS.intercalate "\n" lines
 
 -- * User interface
 
