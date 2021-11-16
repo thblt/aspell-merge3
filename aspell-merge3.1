@@ -1,0 +1,54 @@
+.TH ASPELL-MERGE3 1 "9 November 2021" "ASPELL-MERGE3" "aspell-merge3 Manual"
+
+.SH NAME
+aspell-merge3 \-
+
+.SH SYNOPSIS
+\fBaspell-merge3\fR ANCESTOR A B [-o OUTPUT|--output OUTPUT]
+
+.SH DESCRIPTION
+\fBaspell-merge3\fR merges two aspell custom dictionaries against a
+common ancestor, taking deletions into account, and produces a new
+custom dictionary file.
+
+.SH OPTIONS
+.IP "-o,--output FILE"
+Write result to FILE instead of STDOUT.
+
+.SH ALGORITHM
+
+Given three sets of words, one from the ancestor (O), and two from the
+diverging variants of O we need to merge (A and B), we produce a new
+set of words that includes words that matches at least one of those
+conditions:
+
+ 1. The word present in both A and B.
+ 2. The word is present in *either* A or B, and not in O.
+
+Condition 1 corresponds to the most basic situation: either the word
+was added on both sides, or it was already in O --- we don't need to
+care.  Condition 2 is for words that have been added to one of the
+sides.  The extra condition in that rule, that the word is absent from
+O, serves to propagate deletions: a word present in O, but not in both
+A and B, has been deleted on one side and that deletion must be
+propagated to the final result.
+
+In less words, the result of the merge is:
+
+  (A∩B)  ∪ (AΔB)\O
+  -----    -------
+  Rule 1   Rule 2
+
+  Where Δ is symmetric difference: AΔB == A\B ∪ B\A
+
+.SH REFERENCE
+.TP
+\fIhttp://aspell.net/man-html/Format-of-the-Personal-and-Replacement-Dictionaries.html\fR
+
+.SH COPYRIGHT
+Copyright \(co 2021 Thibault Polge <thibault@thb.lt>.
+
+License GPLv3+ (<http://gnu.org/licenses/gpl.html>)
+
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
