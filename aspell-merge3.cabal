@@ -18,11 +18,12 @@ executable aspell-merge3
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        Paths_aspell_merge3
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base =>=4.14.3.0,
+    build-depends:    base >= 4.14.3.0,
                       bytestring >= 0.10.12.0,
                       containers >= 0.6.5.1,
                       optparse-applicative >= 0.16.1
