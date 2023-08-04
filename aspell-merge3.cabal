@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               aspell-merge3
-Version:            0.2.0.0
+Version:            1.0.0.0
 
 -- A short (one-line) description of the package.
 synopsis: Automatic three-way merge for aspell personal dictionaries.
