@@ -186,7 +186,7 @@ argParser = Invocation
             <*> argument str
             (metavar "B"
              <> help "Path to a second revision.")
-            <*> (optional $ strOption $
+            <*> optional (strOption $
                  long "output"
                  <> short 'o'
                  <> help "Output file (default stdout)")
@@ -195,7 +195,7 @@ main = main' =<< execParser opts
   where opts = info
                (argParser <**> helper)
                (fullDesc
-                 <> (progDesc $  "Automatic three-way merge for aspell custom dictionaries."
+                 <> progDesc ("Automatic three-way merge for aspell custom dictionaries."
                  ++ " (v. " ++ showVersion version ++ ")"))
 
 main' :: Invocation -> IO ()
@@ -203,7 +203,7 @@ main' i = do
   o <- readDictFile (invocO i)
   a <- readDictFile (invocA i)
   b <- readDictFile (invocB i)
-  outfd <- fromMaybeMap (return stdout) (\f -> openFile f WriteMode) (invocOut i)
+  outfd <- fromMaybeMap (return stdout) (`openFile` WriteMode) (invocOut i)
   handleResult outfd (merge o a b)
 
 -- * Utilities
